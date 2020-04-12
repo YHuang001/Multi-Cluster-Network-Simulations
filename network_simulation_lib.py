@@ -50,7 +50,7 @@ def ConstructTwoER(num_of_nodes, avg_degree_1, avg_degree_2, similarity):
     """
     p_1, p_2 = avg_degree_1 / num_of_nodes, avg_degree_2 / num_of_nodes
     if np.sqrt(p_1 / p_2) < similarity or np.sqrt(p_2 / p_1) < similarity:
-        raise ValueError("Invalid two-layer ER network inputs!")
+        raise ValueError('Invalid two-layer ER network inputs!')
     graph_1 = nx.fast_gnp_random_graph(num_of_nodes, p_1 - np.sqrt(p_1 * p_2) * similarity)
     graph_2 = nx.fast_gnp_random_graph(num_of_nodes, p_2 - np.sqrt(p_1 * p_2) * similarity)
     graph_mutual = nx.fast_gnp_random_graph(num_of_nodes, np.sqrt(p_1 * p_2) * similarity)
@@ -105,26 +105,27 @@ def ConstructInterClusterConfigs(ic_topology, num_of_clusters, num_of_ic_links, 
             ic_similarity: The portion of shared inter-cluster links in this cluster pair.
     """
     cluster_pairs = []
-    if ic_topology == "line":
+    if ic_topology == 'line':
         num = list(range(num_of_clusters))
         for cluster_pair in tuple(zip(num[:-1], num[1:])):
             cluster_pairs.append(cluster_pair)
-    elif ic_topology == "star":
+    elif ic_topology == 'star':
         num = list(range(1, num_of_clusters))
         for cluster_pair in tuple(zip([0] * (num_of_clusters - 1), num)):
             cluster_pairs.append(cluster_pair)
-    elif ic_topology == "random":
+    elif ic_topology == 'random':
         graph = nx.fast_gnp_random_graph(num_of_clusters, random_cluster_prob)
         for cluster_pair in graph.edges:
             cluster_pairs.append(cluster_pair)
     else:
-        raise TypeError(f"{ic_topology} not supported!")
+        raise TypeError(f'{ic_topology} not supported!')
 
     return cluster_pairs, num_of_ic_links, ic_similarity
 
 class MultiClusterNetworks(object):
     """A multi-cluster network object."""
-    def __init__(self, num_of_clusters, cluster_sizes, cluster_types, cluster_paras, infection_rate, protection_rate, inter_cluster_link_paras):
+    def __init__(self, num_of_clusters, cluster_sizes, cluster_types, cluster_paras,
+                 infection_rate, protection_rate, inter_cluster_link_paras):
         self._num_of_clusters = num_of_clusters
         self._cluster_sizes = cluster_sizes
         self._cluster_types = cluster_types
@@ -146,40 +147,36 @@ class MultiClusterNetworks(object):
         for node in self._cluster_nodes:
             self._graph_1.add_nodes_from(node)
             self._graph_2.add_nodes_from(node)
-        cluster_size, cluster_type, cluster_para = None, None, None
-        if len(self._cluster_sizes) == 1:
-            cluster_size = self._cluster_sizes
-        if len(self._cluster_types) == 1:
-            cluster_type = self._cluster_types
-        if len(self._cluster_paras) == 1:
-            cluster_para = self._cluster_paras
+        # Construct each cluster based on the input parameters.
         for cluster in range(self._num_of_clusters):
-            num_of_nodes = cluster_size if cluster_size else self._cluster_sizes[cluster]
-            c_paras = cluster_para if cluster_para else self._cluster_paras[cluster]
-            c_type = cluster_type if cluster_type else self._cluster_types[cluster]
+            num_of_nodes = self._cluster_sizes[cluster]
+            c_paras = self._cluster_paras[cluster]
+            c_type = self._cluster_types[cluster]
             if c_type == 'ER':
                 if len(c_paras) < 3:
-                    raise ValueError(f"Expected 3 parameters, but got {len(c_paras)}.")
+                    raise ValueError(f'Expected 3 parameters, but got {len(c_paras)}.')
                 node_pairs_1, node_pairs_2 = ConstructTwoER(
                     num_of_nodes, c_paras[0], c_paras[1], c_paras[2])
                 node_pairs_1 = ShiftEdge(node_pairs_1, self._cluster_nodes[cluster][0])
                 node_pairs_2 = ShiftEdge(node_pairs_2, self._cluster_nodes[cluster][0])
             elif c_type == 'RGG':
                 if len(c_paras) < 2:
-                    raise ValueError(f"Expected 2 parameters, but got {len(c_paras)}.")
+                    raise ValueError(f'Expected 2 parameters, but got {len(c_paras)}.')
                 node_pairs_1, node_pairs_2 = ConstructTwoRGG(
                     num_of_nodes, c_paras[0], c_paras[1])
                 node_pairs_1 = ShiftEdge(node_pairs_1, self._cluster_nodes[cluster][0])
                 node_pairs_2 = ShiftEdge(node_pairs_2, self._cluster_nodes[cluster][1])
             else:
-                raise TypeError(f"Graph type {c_type} does not exist!")
+                raise TypeError(f'Graph type {c_type} does not exist!')
             self._graph_1.add_edges_from(node_pairs_1)
             self._graph_2.add_edges_from(node_pairs_2)
     
     def ConstructInterClusterLinks(self):
+        # We assume the same inter-cluster topology in both layers. The difference is the portion
+        # of different inter-cluster links between the same cluster pair.
         ic_links_1, ic_links_2 = set(), set()
         cluster_pairs, num_of_ic_links, ic_similarity = self._ic_link_paras
-        total_num_ic_links = num_of_ic_links + (1 - ic_similarity) * num_of_ic_links
+        total_num_ic_links = int(num_of_ic_links + (1 - ic_similarity) * num_of_ic_links)
         for cluster_1, cluster_2 in cluster_pairs:
             total_ic_links = set()
             for _ in range(total_num_ic_links):
@@ -190,16 +187,17 @@ class MultiClusterNetworks(object):
                 total_ic_links.add((node_1, node_2))
             total_ic_links = list(total_ic_links)
             ic_links_1 = ic_links_1.union(set(total_ic_links[:num_of_ic_links]))
-            ic_links_2 = ic_links_2.union(set(total_ic_links[(1 - ic_similarity) * num_of_ic_links:]))
+            ic_links_2 = ic_links_2.union(set(total_ic_links[int((1 - ic_similarity) * num_of_ic_links):]))
         self._graph_1.add_edges_from(ic_links_1)
         self._graph_2.add_edges_from(ic_links_2)
     
     def SetLinkTimes(self):
-        self._pair_event_times_1 = SetPairTimes(self._graph_1, self._inf_rate)
-        self._pair_event_times_2 = SetPairTimes(self._graph_2, self._pro_rate)
+        # Set up the event times happening on all links.
+        self._pair_event_times_1 = SetPairTimes(list(self._graph_1.edges()), self._inf_rate)
+        self._pair_event_times_2 = SetPairTimes(list(self._graph_2.edges()), self._pro_rate)
     
     def GetNetworkInfo(self):
-        neighbor_list_1 = [set(self._graph_1.neighbors(i)) for i in range(self._total_nodes)]
-        neighbor_list_2 = [set(self._graph_2.neighbors(i)) for i in range(self._total_nodes)]
+        neighbor_list_1 = [set(self._graph_1.neighbors(i)) for i in self._total_nodes]
+        neighbor_list_2 = [set(self._graph_2.neighbors(i)) for i in self._total_nodes]
         return neighbor_list_1, neighbor_list_2, self._pair_event_times_1, self._pair_event_times_2
 
