@@ -37,7 +37,7 @@ def PushRecoveryEvent(event_heap, infected_node, time):
     """
     heapq.heappush(event_heap, (time, (infected_node, infected_node, 'R')))   
 
-def DetermineNodeStatus(node, status_record):
+def DetermineNodeSusceptible(node, status_record):
     """Determines if a node is susceptible.
     
     Args:
@@ -68,7 +68,7 @@ def UpdateEventHeap(event_heap, event_times_1, event_times_2,
     for neighbor in neighbor_list_1[source_node]:
         # If the neighbor node is susceptible, it can be infected in the future,
         # store the corresponding time for the infection event in the event heap.
-        if DetermineNodeStatus(neighbor, status_record):
+        if DetermineNodeSusceptible(neighbor, status_record):
             if (neighbor, source_node) in event_times_1:
                 PushInfectionEvent(event_heap, neighbor, source_node,
                                    current_time + event_times_1[(neighbor, source_node)])
@@ -78,7 +78,7 @@ def UpdateEventHeap(event_heap, event_times_1, event_times_2,
     for neighbor in neighbor_list_2[source_node]:
         # If the neighbor node is susceptible, it can be protected in the future,
         # store the corresponding time for the infection event in the event heap.
-        if DetermineNodeStatus(neighbor, status_record):
+        if DetermineNodeSusceptible(neighbor, status_record):
             if (neighbor, source_node) in event_times_2:
                 PushProtectionEvent(event_heap, neighbor, source_node,
                                     current_time + event_times_2[(neighbor, source_node)])
@@ -125,12 +125,12 @@ def Simulation(num_of_nodes, event_times_1, event_times_2,
             elif event_type == 'P':
                 # Check the status of the two nodes of the incoming protection event.
                 if (infected_node not in status_record['R'] and
-                    DetermineNodeStatus(target_node, status_record)):
+                    DetermineNodeSusceptible(target_node, status_record)):
                         status_record['P'].add(target_node)
             elif event_type == 'I':
                 # Check the status of the two nodes of the incoming infection event.
                 if (infected_node not in status_record['R'] and
-                    DetermineNodeStatus(target_node, status_record)):
+                    DetermineNodeSusceptible(target_node, status_record)):
                     status_record['I'].add(target_node)
                     # Update the future events in the heap with respect to the newly infected node.
                     UpdateEventHeap(
