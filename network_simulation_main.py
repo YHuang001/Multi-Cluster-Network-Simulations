@@ -138,8 +138,8 @@ def Simulation(num_of_nodes, event_times_1, event_times_2,
                         target_node, status_record, current_time)
                     # Push the recovery event for the newly infectede node.
                     PushRecoveryEvent(event_heap, target_node, current_time + recovery_time)
-        portion_of_recovered += len(status_record['P']) / num_of_nodes
-        portion_of_protected += len(status_record['R']) / num_of_nodes
+        portion_of_recovered += len(status_record['R']) / num_of_nodes
+        portion_of_protected += len(status_record['P']) / num_of_nodes
     
     portion_of_recovered /= monte_runs
     portion_of_protected /= monte_runs
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     cluster_paras = [[10, 10, 1]] * num_of_clusters
     # Set up parameters for the inter-cluster links.
     inter_cluster_link_paras = ns_lib.ConstructInterClusterConfigs('line', num_of_clusters, num_of_ic_links, ic_similarity)
-    beta, gamma, recovery_time = 0.5, 0.3, 1.0
+    beta, gamma, recovery_time = 0.5, 0.00001, 1.0
     infection_rate, protection_rate = -np.log(1 - beta) / recovery_time, -np.log(1 - gamma) / recovery_time
     # Create the multi-cluster network object
     multi_cluster_network = ns_lib.MultiClusterNetworks(
